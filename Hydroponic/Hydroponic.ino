@@ -59,7 +59,7 @@
 #define BRTNSS_OFF 60           // уровень освещенности выкл света, обычно 52, 0-100
 
 /*########################################################################################################################################################################*/
-#define projectversion F("version\n\r3.2.1")
+#define sketchversion F("v3.2.1")
 #define SerialSpeed 57600
 #define separator F("----------------------------------")
 #include <EncButton.h>
@@ -78,20 +78,6 @@ struct paramptr {
   byte *min;
   byte *max;
 };
-
-// struct param {
-//   param(){};
-//   param(String _name, byte& _val, byte _min, byte _max){name = _name; val = _val; min = _min; max = _max;};
-//   param(byte& _val, byte _min, byte _max){val = _val; min = _min; max = _max;};
-//   param(paramptr _paramptr){name = _paramptr.name; val = *_paramptr.val; min = *_paramptr.min; max = *_paramptr.max;};
-//   String name;
-//   byte val;
-//   byte min;
-//   byte max;
-//   paramptr toParamPtr(){
-//     return {name, &val, &min, &max};
-//   };
-// };
 
 struct hydroponic {
     byte w_pin = WTR_PIN;
@@ -112,6 +98,7 @@ struct hydromodule {
   hydroponic pot1;
 };
 hydromodule hydromodule1;
+
 bool useOLED;
 EEManager memory(hydromodule1);
 MicroDS3231 RTC;
@@ -130,6 +117,17 @@ const byte percentmax = 100;
 const byte pinmax = 19;
 const byte analogpinmin = 14;
 const byte analogpinmax = 21;
+
+// const char menuparamlist11[][9][2] PROGMEM ={
+//                         {{""},           {"0"}},
+//                         {{"Watering"},   {" (mins, hrly)"}},
+//                         {{"Lighting"},   {" (hrs, daily)"}},
+//                         {{"Brightness"}, {" (%,hyst)"}},
+//                         {{"Time"},       {""}},
+//                         {{"Another"},    {""}},
+//                         {{"Brilliant"},  {""}},
+//                         {{"Setup"},      {""}},
+//                         };
 
 // мигание индицирующим светодиодом i раз
 void blink (byte i){
@@ -248,14 +246,13 @@ void menuCompose(const byte &nSel, String paramlist[][2], const byte &paramlists
   OLED.clear();
   OLED.setScale(1);
   OLED.setCursor(0, 0);
-  byte printheader=paramlist[0][0]!="";
+  byte printheader = paramlist[0][0]!="";
   byte maxlines = 4 - printheader;
-  byte shift = 0;
-  byte printmode = byte(paramlist[0][1][0])-48;                         // 48 Это код символа '0', получаем цифру
+  byte shift = calcShift(paramlistsize-1,nSel,maxlines);
+  byte printmode = paramlist[0][1][0]-48;         // 48 Это код символа '0', получаем цифру
   if(printheader) {OLED.print(paramlist[0][0]);}  // Заголовок окна
-  shift=calcShift(paramlistsize-1,nSel,maxlines);
   for (byte i=1; i<paramlistsize && i<=maxlines; i++){
-    OLED.setCursor(0, i-printheader);
+    OLED.setCursor(0, i-(!printheader));
     OLED.invertText(i+shift==nSel);
     OLED.print(paramlist[i+shift][0]);
     if (printmode) {
@@ -295,11 +292,11 @@ bool menuValChange(const String& header, paramptr paramArray[], const byte& para
       spinVal(nSel, 1, paramArraySize+2, enc.getDir());
       menuValChange(header, paramArray, paramArraySize, nSel);
     }
-    else if (enc.turnH() && nSel<=paramArraySize) {                                               // редактируем выбранный пункт при нажатом вращении
+    else if (enc.turnH() && nSel<=paramArraySize) {                                     // редактируем выбранный пункт при нажатом вращении
       spinVal(paramArray[nSel-1], enc.getDir());
       menuValChange(header, paramArray, paramArraySize, nSel);
     }
-    else if (enc.click()) switch(nSel-paramArraySize){                                            // если был нажат выбранный пункт
+    else if (enc.click()) switch(nSel-paramArraySize){                                  // если был нажат выбранный пункт
       case 1:{                                                                          // пункт "Ok", сохранение установленных значений
         return true;
         break;
@@ -334,16 +331,16 @@ void menuValChange(const String& header, paramptr paramArray[], const byte& para
 
 // отрисовка главного меню, nSel-й элемент будет выделен, нумерация с 0
 void menuMain (hydroponic& pot, DateTime& now, byte nSel = 0){
-  const String paramlist[][2]={
-                        {{F("")},           {F("0")}},
-                        {{F("Watering")},   {F(" (mins, hrly)")}},
-                        {{F("Lighting")},   {F(" (hrs, daily)")}},
-                        {{F("Brightness")}, {F(" (%,hyst)")}},
-                        {{F("Time")},       {F("")}},
-                        {{F("Another")},    {F("")}},
-                        {{F("Brilliant")},  {F("")}},
-                        {{F("Setup")},      {F("")}},
-                        };
+  const String menuparamlist[][2]={
+                      {{F("")},               {F("0")}},
+                      {{F("Watering")},       {F(" (mins, hrly)")}},
+                      {{F("Lighting")},       {F(" (hrs, daily)")}},
+                      {{F("Brightness")},     {F(" (%,hyst)")}},
+                      {{F("Time")},           {F("")}},
+                      {{F("Led indicator")},  {F(" pin")}},
+                      {{F("Just nothing")},   {F("")}},
+                      {{F("About")},          {(String)F("\n\rHydroponic\n\r")+sketchversion+F("\n\rby mineshanya")}},
+                      };
   const byte paramlistsize = 8;
   const String actionlist[]={
                         {F("Save")},
@@ -353,12 +350,11 @@ void menuMain (hydroponic& pot, DateTime& now, byte nSel = 0){
                         };
   const byte actionlistsize=sizeof(actionlist)/sizeof(actionlist[0]);
   if (nSel){
-    menuCompose(nSel, paramlist, paramlistsize, actionlist, actionlistsize);
+    menuCompose(nSel, menuparamlist, paramlistsize, actionlist, actionlistsize);
     menuShow();                                         // вывод меню и линии на экран
   }
   else {
     bool cancel = false;
-    Serial.println(F("Main Menu Entered"));
     showMessage(2,F(" Settings"),2000);
     menuMain(pot, now, ++nSel);                         // отрисовка главного меню с выделенным первым элементом
     do{                                                 // запуск бесконечного цикла опроса энкодера, пока не будет нажат пункт "Cancel"
@@ -369,41 +365,51 @@ void menuMain (hydroponic& pot, DateTime& now, byte nSel = 0){
       }
       if (enc.click()){                                 // если был нажат выбранный пункт
         if (nSel<paramlistsize) switch(nSel){
-          case 1: {                                                                                       // пункт настройки полива
-            paramptr paramArrayptr[3] = { {F(" pin"),   pot.w_pin,      justzero,       pinmax},
-                                          {F("(m) on"),  pot.w_on,       justzero,       pot.w_off},
+          case 1: {                                     // пункт настройки полива
+            paramptr paramArrayptr[] = {  {F(" pin"),       pot.w_pin,      justzero,       pinmax},
+                                          {F("(m) on"),     pot.w_on,       justzero,       pot.w_off},
                                           {F("(m) off"),    pot.w_off,      pot.w_on,       minutemax}
-                                          };
-            menuValChange(String(paramlist[1][0])+String(paramlist[1][1]),paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
+                                        };
+            menuValChange(menuparamlist[1][0]+menuparamlist[1][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
             break;}
-          case 2: {                                                                                       // пункт настройки освещения
-            paramptr paramArrayptr[3] = { {F(" pin\n\r"),   pot.l_pin,      justzero,       pinmax},
-                                          {F("(h) on\n\r"),  pot.l_on,       justzero,       pot.l_off},
+          case 2: {                                     // пункт настройки освещения
+            paramptr paramArrayptr[] = {  {F(" pin"),       pot.l_pin,      justzero,       pinmax},
+                                          {F("(h) on"),     pot.l_on,       justzero,       pot.l_off},
                                           {F("(h) off"),    pot.l_off,      pot.l_on,       hourmax}
-                                          };
-            menuValChange(F("Lighting (hrs, daily)"),paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
+                                        };
+            menuValChange(menuparamlist[2][0]+menuparamlist[2][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
             break;}
-          case 3: {                                                                                       // пункт настройки порога вкл/выкл освещения
-            paramptr paramArrayptr[3] = { {F(" pin\n\r"),hydromodule1.br_sens_pin,analogpinmin,analogpinmax},
-                                          {F("(%) on\n\r"),  pot.br_lvl_on,  justzero,       pot.br_lvl_off},
+          case 3: {                                     // пункт настройки порога вкл/выкл освещения
+            paramptr paramArrayptr[] = { {F(" pin"),hydromodule1.br_sens_pin,analogpinmin, analogpinmax},
+                                          {F("(%) on"),     pot.br_lvl_on,  justzero,       pot.br_lvl_off},
                                           {F("(%) off"),    pot.br_lvl_off, pot.br_lvl_on,  percentmax}
-                                          };
-            menuValChange(F("Brightness (%,hyst)"),paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
+                                        };
+            menuValChange(menuparamlist[3][0]+menuparamlist[3][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
             break;}
-          case 4: {                                                                                       // пункт настройки времени
+          case 4: {                                     // пункт настройки времени
             updTime(now);
-            paramptr paramArrayptr[3] = { {F("(h)\n\r"),         now.hour,       justzero,       hourmax},
-                                          {F("(m)\n\r"),         now.minute,     justzero,       minutemax},
-                                          {F("(s)\n\r"),          now.second,     justzero,       secondmax}
-                                          };
-            if (menuValChange(F("Time"),paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]))) RTC.setTime(now.second, now.minute, now.hour, 1, 12, 2021);
+            paramptr paramArrayptr[] = {  {F("(h)"),         now.hour,       justzero,       hourmax},
+                                          {F("(m)"),         now.minute,     justzero,       minutemax},
+                                          {F("(s)"),         now.second,     justzero,       secondmax}
+                                        };
+            if (menuValChange(menuparamlist[4][0]+menuparamlist[4][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0])))
+              RTC.setTime(now.second, now.minute, now.hour, 1, 12, 2021);
+            break;}
+            case 5: {                                     // пункт настройки светодиодного индикатора
+            paramptr paramArrayptr[] = {  {F(" pin"),hydromodule1.ind_led_pin,justzero,     pinmax}
+                                        };
+            menuValChange(menuparamlist[5][0]+menuparamlist[5][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
+            break;}
+            case 7: {                                     // пункт "About"
+            paramptr paramArrayptr[] = {};
+            menuValChange(menuparamlist[7][0]+menuparamlist[7][1],paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
             break;}
         }
         else switch(nSel-paramlistsize+1){
-          case 1: {saveToEEPROM(hydromodule1); cancel=true; break;}   // пункт "Save"
+          case 1: {saveToEEPROM(hydromodule1); cancel=true; break;}     // пункт "Save"
           case 2: {loadFromEEPROM(hydromodule1); cancel=true; break;}   // пункт "Load"
-          case 3: {restoreDefaults(hydromodule1); cancel=true; break;}                                             // пункт "Reset"
-          case 4: {cancel=true; break;}                                                                   // пункт "Cancel"
+          case 3: {restoreDefaults(hydromodule1); cancel=true; break;}  // пункт "Reset"
+          case 4: {cancel=true; break;}                                 // пункт "Cancel"
         }
         menuMain(pot, now, nSel);
       }
@@ -423,12 +429,11 @@ void setup() {                                            // настройка 
   Serial.begin(SerialSpeed);                              // инициализация Serial на скорости SerialSpeed, заданной в начале
   Serial.println(separator);
   Serial.println(F("Starting..."));
-
   pinMode(OLED_en_pin, INPUT_PULLUP);                     // PIN определения подключения дисплея, вкл, когда замкнут на землю
   useOLED=!digitalRead(OLED_en_pin);                      // попытка инициализации дисплея. Если дисплей не подключен, useOLED=false и функционал меню настроек не будет использоваться
   if (useOLED) OLED.init();
   if (useOLED) Serial.println(F("Display detected")); else Serial.println(F("Display didn't detected, resuming without it"));
-  showMessage(2,projectversion,2000);
+  //showMessage(2,sketchversion,2000);
 
   loadFromEEPROM (hydromodule1);
   pinMode(hydromodule1.br_sens_pin, INPUT_PULLUP);        // PIN датчика освещенности, настраивается вверху
@@ -447,26 +452,26 @@ void setup() {                                            // настройка 
   Serial.println(separator);
 }
 
-// основная функция, выполняется циклически
-void loop () {                                            // циклическая функция, стартует после функции setup()
-  updTime(now);                                           // узнаем текущее время
-  enc.tick();
+// основная функция, выполняется циклически после функции setup()
+void loop () {
+  updTime(now);                                                             // узнаем текущее время
+  enc.tick();                                                               // опрашиваем энкодер
   
   if (millis()-myTimer2 >= 5*1000) {
     digitalWrite(hydromodule1.ind_led_pin, HIGH);
-    updState(hydromodule1, now);                                        // обновляем состояние ножек
-    sendToSerial(hydromodule1.pot1, now);                               // отправляем отладочную инфу в COM-порт на скорости 57600
+    updState(hydromodule1, now);                                            // обновляем состояние ножек
+    sendToSerial(hydromodule1.pot1, now);                                   // отправляем отладочную инфу в COM-порт на скорости 57600
     myTimer2 = millis();
     digitalWrite(hydromodule1.ind_led_pin, LOW);
   }
 
   if (useOLED) {
-    if (!oled_timeout || (millis()-myTimer1 <= oled_timeout*1000)) {
-      sendToDisp(hydromodule1.pot1, now);                               // отправка отладочной инфы на экран до таймаута
+    if (enc.hold()){menuMain(hydromodule1.pot1, now); myTimer1=millis();}   // если был нажат и удержан энкодер/кнопка, запуск меню
+    else if (enc.click()) myTimer1=millis();
+    else if (!oled_timeout || (millis()-myTimer1 <= oled_timeout*1000)) {
+      sendToDisp(hydromodule1.pot1, now);                                   // отправка отладочной инфы на экран до таймаута
     }
     else if (millis()-myTimer1>oled_timeout*1000) {OLED.clear(); OLED.update();}
-    if (enc.hold()){menuMain(hydromodule1.pot1, now); myTimer1=millis();}            // если был нажат и удержан энкодер/кнопка, запуск меню
-    else if (enc.click()) myTimer1=millis();
   }
 
 }
