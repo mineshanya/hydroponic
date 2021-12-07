@@ -123,15 +123,15 @@ uint32_t myTimer2 = 5*1000;
 
 #define defaultHours    12
 #define defaultMinutes  0
-#define justzero        0
-#define secondmax       59
-#define minutemax       59
-#define hourmax         23
-#define percentmax      100
-#define digpinmax       19
-#define analogpinmin    14
-#define analogpinmax    21
-#define oledtimeoutmax  240
+const byte justzero        = 0;
+const byte secondmax       = 59;
+const byte minutemax       = 59;
+const byte hourmax         = 23;
+const byte percentmax      = 100;
+const byte digpinmax       = 19;
+const byte analogpinmin    = 14;
+const byte analogpinmax    = 21;
+const byte oledtimeoutmax  = 240;
 
 const char sl_0[] PROGMEM = "";
 const char sl_1[] PROGMEM = "Watering";
@@ -479,31 +479,31 @@ void menuMain (hydroponic& pot, DateTime& now){
 
         switch(nSel){
           case 1: {                                     // пункт настройки полива
-            paramptr paramArrayptr[] = {  {"(m) on",     pot.w_on,       justzero,       pot.w_off},
-                                          {"(m) off",    pot.w_off,      pot.w_on,       minutemax},
+            paramptr paramArrayptr[] = {  {" (m) on",     pot.w_on,       justzero,       pot.w_off},
+                                          {" (m) off",    pot.w_off,      pot.w_on,       minutemax},
                                           {" pin",       pot.w_pin,      justzero,       digpinmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 2: {                                     // пункт настройки освещения
-            paramptr paramArrayptr[] = {  {"(h) on",     pot.l_on,       justzero,       pot.l_off},
-                                          {"(h) off",    pot.l_off,      pot.l_on,       hourmax},
+            paramptr paramArrayptr[] = {  {" (h) on",     pot.l_on,       justzero,       pot.l_off},
+                                          {" (h) off",    pot.l_off,      pot.l_on,       hourmax},
                                           {" pin",       pot.l_pin,      justzero,       digpinmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 3: {                                     // пункт настройки порога вкл/выкл освещения
-            paramptr paramArrayptr[] = {  {"(%) on",     pot.br_lvl_on,  justzero,       pot.br_lvl_off},
-                                          {"(%) off",    pot.br_lvl_off, pot.br_lvl_on,  percentmax},
+            paramptr paramArrayptr[] = {  {" (%) on",     pot.br_lvl_on,  justzero,       pot.br_lvl_off},
+                                          {" (%) off",    pot.br_lvl_off, pot.br_lvl_on,  percentmax},
                                           {" pin",   grower1.br_sens_pin,analogpinmin,   analogpinmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 4: {                                     // пункт настройки времени
             updTime(&now);
-            paramptr paramArrayptr[] = {  {"(h)",         now.hour,       justzero,       hourmax},
-                                          {"(m)",         now.minute,     justzero,       minutemax},
-                                          {"(s)",         now.second,     justzero,       secondmax}
+            paramptr paramArrayptr[] = {  {" (h)",         now.hour,       justzero,       hourmax},
+                                          {" (m)",         now.minute,     justzero,       minutemax},
+                                          {" (s)",         now.second,     justzero,       secondmax}
                                         };
             if (menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0])))
               RTC.setTime(now.second, now.minute, now.hour, 1, 12, 2021);
@@ -514,7 +514,7 @@ void menuMain (hydroponic& pot, DateTime& now){
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 6: {                                     // пункт настройки таймаута дисплея
-            paramptr paramArrayptr[] = {  {"(s)",    grower1.oled_timeout,justzero,       oledtimeoutmax}
+            paramptr paramArrayptr[] = {  {" (s)",    grower1.oled_timeout,justzero,       oledtimeoutmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
