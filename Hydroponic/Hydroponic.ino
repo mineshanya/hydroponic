@@ -150,7 +150,7 @@ const char shl_3[] PROGMEM = " (%,hyst)";
 const char shl_4[] PROGMEM = "";
 const char shl_5[] PROGMEM = " pin";
 const char shl_6[] PROGMEM = "\n\r\n\r\n\r0 = always";
-const char shl_7[] PROGMEM = "\n\rHydroponic\n\rv3.3.0\n\rby mineshanya";
+const char shl_7[] PROGMEM = ABOUTTEXT;
 const char *const settingsHintList[] PROGMEM ={shl_0, shl_1, shl_2, shl_3, shl_4, shl_5, shl_6, shl_7};
 const byte settingsSize = sizeof(settingsList)/sizeof(settingsList[0]);
 
