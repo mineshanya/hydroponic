@@ -59,8 +59,8 @@
 #define BRTNSS_OFF    60     // верхний порог % освещенности для выкл света, обычно 52, 0-100
 
 /*########################################################################################################################################################################*/
-#define sketchversion F("v3.4.0")
-#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.0\n\rby mineshanya"
+#define sketchversion F("v3.4.1")
+#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.1\n\rby mineshanya"
 #define SerialSpeed   57600
 #define separator     F("----------------------------------")
 #include <EncButton.h>
@@ -294,7 +294,10 @@ byte calcShift(const byte& listsize, const byte& nSel, const byte& maxlines){
   if (listsize>maxlines && nSel>maxlines) {
       if (nSel<=listsize)
         return nSel-maxlines;
-    } else return 0;
+      else 
+        return 0;
+  }
+  else return 0;
 }
 
 // считывание строки типа char из PROGMEM в буфер
