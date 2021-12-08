@@ -47,7 +47,7 @@
 #define BR_SENS_PIN   A3     // pin датчик освещенности, обычно A3,                                 допустимые пины A0-A3, A6-A7
 #define IND_LED_PIN   13     // pin светодиода-индикатора, обычно 13(распаян на плате)              допустимые пины 2-13, A0-A3, A6-A7
 
-#define OLED_en_pin   2      // pin включения дисплея, если нужно задействовать, замыкаем на землю, допустимые пины 2-13, A0-A3, A6-A7
+#define OLED_EN_PIN   2      // pin включения дисплея, если нужно задействовать, замыкаем на землю, допустимые пины 2-13, A0-A3, A6-A7
 
 /*#################################  РАСПИСАНИЕ ПО-УМОЛЧАНИЮ  ############################################################################################################*/
 #define OLED_TIMEOUT  10     // время в секундах до автовыключения дисплея, 1-240 сек, 0 горит всегда
@@ -59,8 +59,8 @@
 #define BRTNSS_OFF    60     // верхний порог % освещенности для выкл света, обычно 52, 0-100
 
 /*########################################################################################################################################################################*/
-#define sketchversion F("v3.4.1")
-#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.1\n\rby mineshanya"
+#define sketchversion F("v3.4.2")
+#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.2\n\rby mineshanya"
 #define SerialSpeed   57600
 #define separator     F("----------------------------------")
 #include <EncButton.h>
@@ -81,16 +81,6 @@ struct paramptr {
 };
 
 struct hydroponic {
-    hydroponic(){
-      w_pin = WTR_PIN;
-      w_on  = WTR_ON;
-      w_off = WTR_OFF;
-      l_pin = LGHT_PIN;
-      l_on  = LGHT_ON;
-      l_off = LGHT_OFF;
-      br_lvl_on  = BRTNSS_ON;
-      br_lvl_off = BRTNSS_OFF;
-    };
     byte w_pin;
     byte w_on;
     byte w_off;
@@ -102,9 +92,20 @@ struct hydroponic {
     byte brightness;
     bool wtr_pin_state;
     bool lght_pin_state;
+    hydroponic(){
+      w_pin = WTR_PIN;
+      w_on  = WTR_ON;
+      w_off = WTR_OFF;
+      l_pin = LGHT_PIN;
+      l_on  = LGHT_ON;
+      l_off = LGHT_OFF;
+      br_lvl_on  = BRTNSS_ON;
+      br_lvl_off = BRTNSS_OFF;
+    };
 };
 struct hydromodule {
   bool useOLED;
+  byte OLED_en_pin = OLED_EN_PIN;
   byte oled_timeout = OLED_TIMEOUT;
   byte ind_led_pin = IND_LED_PIN;
   byte br_sens_pin = BR_SENS_PIN;
@@ -138,7 +139,7 @@ const char sl_1[] PROGMEM = "Watering";
 const char sl_2[] PROGMEM = "Lighting";
 const char sl_3[] PROGMEM = "Brightness";
 const char sl_4[] PROGMEM = "Time";
-const char sl_5[] PROGMEM = "Led indicator";
+const char sl_5[] PROGMEM = "All pins";
 const char sl_6[] PROGMEM = "Display timeout";
 const char sl_7[] PROGMEM = "About";
 const char *const settingsList[] PROGMEM ={sl_0, sl_1, sl_2, sl_3, sl_4, sl_5, sl_6, sl_7};
@@ -148,7 +149,7 @@ const char shl_1[] PROGMEM = " (mins, hrly)";
 const char shl_2[] PROGMEM = " (hrs, daily)";
 const char shl_3[] PROGMEM = " (%,hyst)";
 const char shl_4[] PROGMEM = "";
-const char shl_5[] PROGMEM = " pin";
+const char shl_5[] PROGMEM = " (A0->14 etc)";
 const char shl_6[] PROGMEM = "\n\r\n\r\n\r0 = always";
 const char shl_7[] PROGMEM = ABOUTTEXT;
 const char *const settingsHintList[] PROGMEM ={shl_0, shl_1, shl_2, shl_3, shl_4, shl_5, shl_6, shl_7};
@@ -309,7 +310,7 @@ char* readLinePROGMEM(char* &arr, uint16_t charMap){
 }
 
 // компоновка меню для отображения на дисплее
-void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 94){
+void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 95){
   OLED.clear();
   OLED.setScale(1);
   OLED.setCursor(0, 0);
@@ -331,7 +332,7 @@ void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const by
     char* buffer = NULL;
     shift=calcShift(actionlistsize,nSel-paramlistsize+1,maxlines);
     OLED.fastLineV(NextColX, printheader*8, 31, OLED_FILL);
-    NextColX+=4;
+    NextColX+=3;
     for (byte i=0; i<actionlistsize && i<=maxlines; i++){
       OLED.setCursor(NextColX, i+printheader);
       OLED.invertText(i+shift==nSel-paramlistsize);
@@ -344,7 +345,7 @@ void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const by
 }
 
 // компоновка меню из PROGMEM для отображения на дисплее
-void menuComposePGM(const byte &nSel,const char *const paramlist1[], const char *const paramlist2[], const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 94){
+void menuComposePGM(const byte &nSel,const char *const paramlist1[], const char *const paramlist2[], const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 95){
   OLED.clear();
   OLED.setScale(1);
   OLED.setCursor(0, 0);
@@ -372,7 +373,7 @@ void menuComposePGM(const byte &nSel,const char *const paramlist1[], const char 
   if (actionlistsize) {
     shift=calcShift(actionlistsize,nSel-paramlistsize+1,maxlines);
     OLED.fastLineV(NextColX, printheader*8, 31, OLED_FILL);
-    NextColX+=4;
+    NextColX+=3;
     for (byte i=0; i<actionlistsize && i<=maxlines; i++){
       OLED.setCursor(NextColX, i+printheader);
       OLED.invertText(i+shift==nSel-paramlistsize);
@@ -429,8 +430,8 @@ void menuValChangeDraw(char* &header,paramptr* &paramArray, const byte& paramArr
           menulist1[i+1] = new char[5];
           //if (*paramArray[i].val<10) menulist[i+1][0]=strcat('0',(*paramArray[i].val));
           //else menulist[i+1][0]=(char*)(*paramArray[i].val);
-          //sprintf(menulist1[i+1],"%02u", *paramArray[i].val);
-          itoa(*paramArray[i].val, menulist1[i+1], 10);
+          sprintf(menulist1[i+1],"%02u", *paramArray[i].val);
+          //itoa(*paramArray[i].val, menulist1[i+1], 10);
           menulist2[i+1]=paramArray[i].name;
   }
   menulist1[0] = new char[strlen(header)+1];
@@ -444,7 +445,7 @@ void menuValChangeDraw(char* &header,paramptr* &paramArray, const byte& paramArr
   delete[] menulist1;
   delete[] menulist2;
   if (nSel<=paramArraySize) {
-    OLED.fastLineH(3*8-2, 86, 128, OLED_FILL);
+    OLED.fastLineH(3*8-2, 87, 128, OLED_FILL);
     OLED.setCursor(90, 3);
     OLED.print(String(*paramArray[nSel-1].min)+'-'+String(*paramArray[nSel-1].max));
   }
@@ -480,22 +481,19 @@ void menuMain (hydroponic& pot, DateTime& now){
         switch(nSel){
           case 1: {                                     // пункт настройки полива
             paramptr paramArrayptr[] = {  {" (m) on",     pot.w_on,       justzero,       pot.w_off},
-                                          {" (m) off",    pot.w_off,      pot.w_on,       minutemax},
-                                          {" pin",       pot.w_pin,      justzero,       digpinmax}
+                                          {" (m) off",    pot.w_off,      pot.w_on,       minutemax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 2: {                                     // пункт настройки освещения
             paramptr paramArrayptr[] = {  {" (h) on",     pot.l_on,       justzero,       pot.l_off},
-                                          {" (h) off",    pot.l_off,      pot.l_on,       hourmax},
-                                          {" pin",       pot.l_pin,      justzero,       digpinmax}
+                                          {" (h) off",    pot.l_off,      pot.l_on,       hourmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
           case 3: {                                     // пункт настройки порога вкл/выкл освещения
             paramptr paramArrayptr[] = {  {" (%) on",     pot.br_lvl_on,  justzero,       pot.br_lvl_off},
-                                          {" (%) off",    pot.br_lvl_off, pot.br_lvl_on,  percentmax},
-                                          {" pin",   grower1.br_sens_pin,analogpinmin,   analogpinmax}
+                                          {" (%) off",    pot.br_lvl_off, pot.br_lvl_on,  percentmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
@@ -508,8 +506,12 @@ void menuMain (hydroponic& pot, DateTime& now){
             if (menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0])))
               RTC.setTime(now.second, now.minute, now.hour, 1, 12, 2021);
           break;}
-          case 5: {                                     // пункт настройки светодиодного индикатора
-            paramptr paramArrayptr[] = {  {" pin",    grower1.ind_led_pin,justzero,       digpinmax}
+          case 5: {                                     // пункт настройки всех пинов
+            paramptr paramArrayptr[] = {  {" pin wtr",     pot.w_pin,      justzero,       digpinmax},
+                                          {" pin lght",    pot.l_pin,      justzero,       digpinmax},
+                                          {" pin br sens", grower1.br_sens_pin,analogpinmin,analogpinmax},
+                                          {" pin led ind", grower1.ind_led_pin,justzero,   digpinmax},
+                                          {" pin OLED en",grower1.OLED_en_pin,justzero,    digpinmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
@@ -555,8 +557,8 @@ void setup() {                                            // настройка 
   Serial.println(separator);
   Serial.println(F("Starting..."));
 
-  pinMode(OLED_en_pin, INPUT_PULLUP);                     // PIN определения подключения дисплея, вкл, когда замкнут на землю
-  grower1.useOLED=!digitalRead(OLED_en_pin);              // попытка инициализации дисплея. Если дисплей не подключен, grower1.useOLED=false и функционал меню настроек не будет использоваться
+  pinMode(grower1.OLED_en_pin, INPUT_PULLUP);             // PIN определения подключения дисплея, вкл, когда замкнут на землю
+  grower1.useOLED=!digitalRead(grower1.OLED_en_pin);      // попытка инициализации дисплея. Если дисплей не подключен, grower1.useOLED=false и функционал меню настроек не будет использоваться
   if (grower1.useOLED) Serial.println(F("Display detected")); else Serial.println(F("Display didn't detected, resuming without it"));
   if (grower1.useOLED) OLED.init();
 
