@@ -59,8 +59,8 @@
 #define BRTNSS_OFF    60     // верхний порог % освещенности для выкл света, обычно 52, 0-100
 
 /*########################################################################################################################################################################*/
-#define sketchversion F("v3.4.2")
-#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.2\n\rby mineshanya"
+#define sketchversion F("v3.5.0")
+#define ABOUTTEXT     "\n\rHydroponic\n\rv3.5.0\n\rby mineshanya"
 #define SerialSpeed   57600
 #define separator     F("----------------------------------")
 #include <EncButton.h>
@@ -78,6 +78,23 @@ struct paramptr {
   byte *val;
   byte *min;
   byte *max;
+};
+
+struct param {
+  //paramptr(){};
+  //paramptr(const String& _name, byte& _val, byte& _min, byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
+  //paramptr(const String& _name, byte& _val, const byte& _min, byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
+  //paramptr(const String& _name, byte& _val, byte& _min, const byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
+  //paramptr(const char* _name, byte& _val, const byte& _min, const byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
+  const char* unit;
+  const char* valDesc;
+  const char* name;
+  byte pin;
+  byte val;
+  byte *min;
+  byte *max;
+  byte type;
+  bool state;
 };
 
 struct hydroponic {
@@ -133,6 +150,22 @@ const byte digpinmax       = 19;
 const byte analogpinmin    = 14;
 const byte analogpinmax    = 21;
 const byte oledtimeoutmax  = 240;
+
+const char ul_0[] PROGMEM = " (h)";
+const char ul_1[] PROGMEM = " (m)";
+const char ul_2[] PROGMEM = " (s)";
+const char ul_3[] PROGMEM = " (%)";
+const char ul_4[] PROGMEM = " pin";
+const char *const unitsList[] PROGMEM ={ul_0, ul_1, ul_2, ul_3, ul_4};
+const byte unitsSize = sizeof(unitsList)/sizeof(unitsList[0]);
+
+const char vdl_0[] PROGMEM = " wtr";
+const char vdl_1[] PROGMEM = " lght";
+const char vdl_2[] PROGMEM = " br sens";
+const char vdl_3[] PROGMEM = " led ind";
+const char vdl_4[] PROGMEM = " OLED en";
+const char *const valDescList[] PROGMEM ={vdl_0, vdl_1, vdl_2, vdl_3, vdl_4};
+const byte valDescSize = sizeof(valDescList)/sizeof(valDescList[0]);
 
 const char sl_0[] PROGMEM = "";
 const char sl_1[] PROGMEM = "Watering";
@@ -309,12 +342,13 @@ char* readLinePROGMEM(char* &arr, uint16_t charMap){
   return arr;
 }
 
+
 // компоновка меню для отображения на дисплее
 void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 95){
   OLED.clear();
   OLED.setScale(1);
   OLED.setCursor(0, 0);
-  byte printheader = paramlist1[0][0]!='\0';
+  bool printheader = paramlist1[0][0];                // '\0' false, во всех остальных случаях true
   byte maxlines = 4 - printheader;
   byte shift = calcShift(paramlistsize-1,nSel,maxlines);
   byte printmode = byte(paramlist2[0][0])-48;         // 48 Это код символа '0', получаем цифру
@@ -355,7 +389,7 @@ void menuComposePGM(const byte &nSel,const char *const paramlist1[], const char 
   byte printmode = byte(buffer[0])-'0';     // 48 Это код символа '0', получаем цифру режима печати
 
   readLinePROGMEM(buffer,&(paramlist1[0])); // Теперь читаем в буфер заголовок
-  byte printheader = buffer[0]!='\0'; 
+  bool printheader = buffer[0];             // '\0' false, во всех остальных случаях true
 
   byte maxlines = 4 - printheader;
   byte shift = calcShift(paramlistsize-1,nSel,maxlines);
@@ -391,8 +425,8 @@ void menuShow(){
 }
 
 
-// типовое подменю дисплея для изменения текущего времени и параметров расписания
-bool menuValChange(char* &header, paramptr paramArray[] = {}, const byte& paramArraySize = 0){
+// типовое подменю дисплея для изменения списка параметров
+bool menuValChange(char* &header, paramptr* paramArray = {}, const byte& paramArraySize = 0){
   byte nSel = 1;
   Serial.print(F("Editing ")); Serial.println(header);
   menuValChangeDraw(header, paramArray, paramArraySize, nSel);
@@ -423,14 +457,14 @@ bool menuValChange(char* &header, paramptr paramArray[] = {}, const byte& paramA
   } while (!cancel);
   return false;
 }
-void menuValChangeDraw(char* &header,paramptr* &paramArray, const byte& paramArraySize, byte& nSel){
+void menuValChangeDraw(char* &header,paramptr* paramArray, const byte& paramArraySize, byte& nSel){
   char** menulist1 = new char*[paramArraySize+1];
   char** menulist2 = new char*[paramArraySize+1];
   for (byte i=0;i<paramArraySize;i++){
           menulist1[i+1] = new char[5];
           //if (*paramArray[i].val<10) menulist[i+1][0]=strcat('0',(*paramArray[i].val));
           //else menulist[i+1][0]=(char*)(*paramArray[i].val);
-          sprintf(menulist1[i+1],"%02u", *paramArray[i].val);
+          sprintf(menulist1[i+1],"%02u", *paramArray[i].val);     // Отжирает 1.2кб памяти под программу!!!!!! переписать!!!!!
           //itoa(*paramArray[i].val, menulist1[i+1], 10);
           menulist2[i+1]=paramArray[i].name;
   }
