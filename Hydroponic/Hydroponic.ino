@@ -59,8 +59,8 @@
 #define BRTNSS_OFF    60     // верхний порог % освещенности для выкл света, обычно 52, 0-100
 
 /*########################################################################################################################################################################*/
-#define sketchversion F("v3.4.2")
-#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.2\n\rby mineshanya"
+#define sketchversion F("v3.4.3")
+#define ABOUTTEXT     "\n\rHydroponic\n\rv3.4.3\n\rby mineshanya"
 #define SerialSpeed   57600
 #define separator     F("----------------------------------")
 #include <EncButton.h>
@@ -68,16 +68,96 @@
 #include <GyverOLED.h>
 #include <EEManager.h>
 
+#define defaultHours    12
+#define defaultMinutes  0
+const byte justzero        = 0;
+const byte secondmax       = 59;
+const byte minutemax       = 59;
+const byte hourmax         = 23;
+const byte percentmax      = 100;
+const byte dpinmin         = 0;
+const byte dpinmax         = 19;
+const byte apinmin         = 14;
+const byte apinmax         = 21;
+const byte oledtimeoutmax  = 240;
+
+const char ul_0[] PROGMEM = " (h)";
+const char ul_1[] PROGMEM = " (m)";
+const char ul_2[] PROGMEM = " (s)";
+const char ul_3[] PROGMEM = " (%)";
+const char ul_4[] PROGMEM = " dpin";
+const char ul_5[] PROGMEM = " apin";
+const char *const unitsList[] PROGMEM ={ul_0, ul_1, ul_2, ul_3, ul_4, ul_5};
+const byte unitsSize = sizeof(unitsList)/sizeof(unitsList[0]);
+
+const char vdl_0[] PROGMEM = " on";
+const char vdl_1[] PROGMEM = " off";
+const char vdl_2[] PROGMEM = " repeat";
+const char vdl_3[] PROGMEM = " wtr";
+const char vdl_4[] PROGMEM = " lght";
+const char vdl_5[] PROGMEM = " br sens";
+const char vdl_6[] PROGMEM = " led ind";
+const char vdl_7[] PROGMEM = " OLED en";
+const char *const valDescList[] PROGMEM ={vdl_0, vdl_1, vdl_2, vdl_3, vdl_4, vdl_5, vdl_6, vdl_7};
+const byte valDescSize = sizeof(valDescList)/sizeof(valDescList[0]);
+
+const char sl_0[] PROGMEM = "";
+const char sl_1[] PROGMEM = "Watering";
+const char sl_2[] PROGMEM = "Lighting";
+const char sl_3[] PROGMEM = "Brightness";
+const char sl_4[] PROGMEM = "Time";
+const char sl_5[] PROGMEM = "All pins";
+const char sl_6[] PROGMEM = "Display timeout";
+const char sl_7[] PROGMEM = "About";
+const char *const settingsList[] PROGMEM ={sl_0, sl_1, sl_2, sl_3, sl_4, sl_5, sl_6, sl_7};
+
+const char shl_0[] PROGMEM = "0";
+const char shl_1[] PROGMEM = " (mins, hrly)";
+const char shl_2[] PROGMEM = " (hrs, daily)";
+const char shl_3[] PROGMEM = " (%,hyst)";
+const char shl_4[] PROGMEM = "";
+const char shl_5[] PROGMEM = " (A0->14 etc)";
+const char shl_6[] PROGMEM = "\n\r\n\r\n\r0 = always";
+const char shl_7[] PROGMEM = ABOUTTEXT;
+const char *const settingsHintList[] PROGMEM ={shl_0, shl_1, shl_2, shl_3, shl_4, shl_5, shl_6, shl_7};
+const byte settingsSize = sizeof(settingsList)/sizeof(settingsList[0]);
+
+const char sal_0[] PROGMEM = "Save";
+const char sal_1[] PROGMEM = "Load";
+const char sal_2[] PROGMEM = "Reset";
+const char sal_3[] PROGMEM = "Close";
+const char *const settingsActionList[] PROGMEM = {sal_0, sal_1, sal_2, sal_3};
+const byte settingsActionListSize=sizeof(settingsActionList)/sizeof(settingsActionList[0]);
+
+const char mval_0[] PROGMEM = "OK";
+const char mval_1[] PROGMEM = "Cancel";
+const char* const menuValActionList[] PROGMEM ={mval_0,mval_1};
+const byte menuValActionListSize=sizeof(menuValActionList)/sizeof(menuValActionList[0]);
+
 struct paramptr {
-  paramptr(){};
+  //paramptr(){};
   //paramptr(const String& _name, byte& _val, byte& _min, byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
-  //paramptr(const String& _name, byte& _val, const byte& _min, byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
-  //paramptr(const String& _name, byte& _val, byte& _min, const byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
-  paramptr(const char* _name, byte& _val, const byte& _min, const byte& _max){name = _name; val = &_val; min = &_min; max = &_max;};
+  //paramptr(const char* _name, byte &_val, const byte &_min, byte &_max){name = _name; val = _val; min = _min; max = _max;};
+  //paramptr(const char* _name, byte &_val, byte &_min, const byte &_max){name = _name; val = _val; min = _min; max = _max;};
+  //paramptr(const char* _name, byte &_val, const byte& _min, const byte& _max) : name(_name); val(_val); min(_min); max(_max);{};//{name = _name; val = _val; min = _min; max = _max;};
   const char* name;
-  byte *val;
-  byte *min;
-  byte *max;
+  byte &val;
+  const byte &min;
+  const byte &max;
+};
+
+struct elem {
+  uint8_t val = 0;
+  uint16_t* unitPGMindex = nullptr;
+  uint8_t* min = nullptr;
+  uint8_t* max = nullptr;
+};
+
+struct param {
+  uint16_t namePGMindex = 0;
+  uint16_t val = 0; // digitalWrite/analogRead based on type
+  uint8_t type = 0; // 0 = input(default), 1 = just output, 2-21 = output connected to input №
+  elem* trg = nullptr;
 };
 
 struct hydroponic {
@@ -121,52 +201,6 @@ EncButton<EB_TICK, ENC_CLK_S1, ENC_DT_S2, ENK_key_SW> enc;
 
 uint32_t myTimer1 = 0;
 uint32_t myTimer2 = 5*1000;
-
-#define defaultHours    12
-#define defaultMinutes  0
-const byte justzero        = 0;
-const byte secondmax       = 59;
-const byte minutemax       = 59;
-const byte hourmax         = 23;
-const byte percentmax      = 100;
-const byte digpinmax       = 19;
-const byte analogpinmin    = 14;
-const byte analogpinmax    = 21;
-const byte oledtimeoutmax  = 240;
-
-const char sl_0[] PROGMEM = "";
-const char sl_1[] PROGMEM = "Watering";
-const char sl_2[] PROGMEM = "Lighting";
-const char sl_3[] PROGMEM = "Brightness";
-const char sl_4[] PROGMEM = "Time";
-const char sl_5[] PROGMEM = "All pins";
-const char sl_6[] PROGMEM = "Display timeout";
-const char sl_7[] PROGMEM = "About";
-const char *const settingsList[] PROGMEM ={sl_0, sl_1, sl_2, sl_3, sl_4, sl_5, sl_6, sl_7};
-
-const char shl_0[] PROGMEM = "0";
-const char shl_1[] PROGMEM = " (mins, hrly)";
-const char shl_2[] PROGMEM = " (hrs, daily)";
-const char shl_3[] PROGMEM = " (%,hyst)";
-const char shl_4[] PROGMEM = "";
-const char shl_5[] PROGMEM = " (A0->14 etc)";
-const char shl_6[] PROGMEM = "\n\r\n\r\n\r0 = always";
-const char shl_7[] PROGMEM = ABOUTTEXT;
-const char *const settingsHintList[] PROGMEM ={shl_0, shl_1, shl_2, shl_3, shl_4, shl_5, shl_6, shl_7};
-const byte settingsSize = sizeof(settingsList)/sizeof(settingsList[0]);
-
-const char sal_0[] PROGMEM = "Save";
-const char sal_1[] PROGMEM = "Load";
-const char sal_2[] PROGMEM = "Reset";
-const char sal_3[] PROGMEM = "Close";
-const char *const settingsActionList[] PROGMEM = {sal_0, sal_1, sal_2, sal_3};
-const byte settingsActionListSize=sizeof(settingsActionList)/sizeof(settingsActionList[0]);
-
-const char mval_0[] PROGMEM = "OK";
-const char mval_1[] PROGMEM = "Cancel";
-const char* const menuValActionList[] PROGMEM ={mval_0,mval_1};
-const byte menuValActionListSize=sizeof(menuValActionList)/sizeof(menuValActionList[0]);
-
 
 // мигание индицирующим светодиодом i раз
 void blink (byte i = 1){
@@ -284,10 +318,10 @@ void spinVal (byte& val, const byte& min, const byte& max, const int8_t& directi
     if (val<max) val++; else val = min;
   else if (val>min) val--; else val = max;
 }
-void spinVal (paramptr& elem, const int8_t& direction) {
+void spinVal (const paramptr& elem, const int8_t& direction) {
   if (direction>0)
-    if (*elem.val < *elem.max) (*elem.val)++; else *elem.val = *elem.min;
-  else if (*elem.val > *elem.min) (*elem.val)--; else *elem.val = *elem.max;
+    if (elem.val < elem.max) (elem.val)++; else elem.val = elem.min;
+  else if (elem.val > elem.min) (elem.val)--; else elem.val = elem.max;
 }
 
 // проверяем, на сколько мы ушли за пределы отображаемого списка
@@ -309,12 +343,13 @@ char* readLinePROGMEM(char* &arr, uint16_t charMap){
   return arr;
 }
 
+
 // компоновка меню для отображения на дисплее
 void menuCompose(const byte &nSel,char** paramlist1, char** paramlist2, const byte &paramlistsize, const char *const actionList[], const byte &actionlistsize, byte NextColX = 95){
   OLED.clear();
   OLED.setScale(1);
   OLED.setCursor(0, 0);
-  byte printheader = paramlist1[0][0]!='\0';
+  bool printheader = paramlist1[0][0];                // '\0' false, во всех остальных случаях true
   byte maxlines = 4 - printheader;
   byte shift = calcShift(paramlistsize-1,nSel,maxlines);
   byte printmode = byte(paramlist2[0][0])-48;         // 48 Это код символа '0', получаем цифру
@@ -355,7 +390,7 @@ void menuComposePGM(const byte &nSel,const char *const paramlist1[], const char 
   byte printmode = byte(buffer[0])-'0';     // 48 Это код символа '0', получаем цифру режима печати
 
   readLinePROGMEM(buffer,&(paramlist1[0])); // Теперь читаем в буфер заголовок
-  byte printheader = buffer[0]!='\0'; 
+  bool printheader = buffer[0];             // '\0' false, во всех остальных случаях true
 
   byte maxlines = 4 - printheader;
   byte shift = calcShift(paramlistsize-1,nSel,maxlines);
@@ -391,14 +426,14 @@ void menuShow(){
 }
 
 
-// типовое подменю дисплея для изменения текущего времени и параметров расписания
-bool menuValChange(char* &header, paramptr paramArray[] = {}, const byte& paramArraySize = 0){
+// типовое подменю дисплея для изменения списка параметров
+bool menuValChange(char* &header,const paramptr paramArray[] = {}, const byte& paramArraySize = 0){
   byte nSel = 1;
   Serial.print(F("Editing ")); Serial.println(header);
   menuValChangeDraw(header, paramArray, paramArraySize, nSel);
   bool cancel = false;
   byte valueBkp[paramArraySize];
-  for (byte i=0;i<paramArraySize;i++) valueBkp[i] = *paramArray[i].val;
+  for (byte i=0;i<paramArraySize;i++) valueBkp[i] = paramArray[i].val;
   do {                                                                                  // переходим в режим ввода с энкодера
     enc.tick();                                                                         // опрашиваем энкодер
     if (enc.turn()) {                                                                   // выделяем другой пункт меню при вращении
@@ -415,7 +450,7 @@ bool menuValChange(char* &header, paramptr paramArray[] = {}, const byte& paramA
         break;
         }
       case 2:{                                                                          // пункт "Cancel", выход из подменю без сохранения
-        for (byte i=0;i<paramArraySize;i++) *paramArray[i].val=valueBkp[i];
+        for (byte i=0;i<paramArraySize;i++) paramArray[i].val=valueBkp[i];
         return false;
         break;
         }
@@ -423,14 +458,14 @@ bool menuValChange(char* &header, paramptr paramArray[] = {}, const byte& paramA
   } while (!cancel);
   return false;
 }
-void menuValChangeDraw(char* &header,paramptr* &paramArray, const byte& paramArraySize, byte& nSel){
+void menuValChangeDraw(char* &header,paramptr paramArray[], const byte& paramArraySize, byte& nSel){
   char** menulist1 = new char*[paramArraySize+1];
   char** menulist2 = new char*[paramArraySize+1];
   for (byte i=0;i<paramArraySize;i++){
           menulist1[i+1] = new char[5];
           //if (*paramArray[i].val<10) menulist[i+1][0]=strcat('0',(*paramArray[i].val));
           //else menulist[i+1][0]=(char*)(*paramArray[i].val);
-          sprintf(menulist1[i+1],"%02u", *paramArray[i].val);
+          sprintf(menulist1[i+1],"%02u", paramArray[i].val);     // Отжирает 1.2кб памяти под программу!!!!!! переписать!!!!!
           //itoa(*paramArray[i].val, menulist1[i+1], 10);
           menulist2[i+1]=paramArray[i].name;
   }
@@ -447,7 +482,7 @@ void menuValChangeDraw(char* &header,paramptr* &paramArray, const byte& paramArr
   if (nSel<=paramArraySize) {
     OLED.fastLineH(3*8-2, 87, 128, OLED_FILL);
     OLED.setCursor(90, 3);
-    OLED.print(String(*paramArray[nSel-1].min)+'-'+String(*paramArray[nSel-1].max));
+    OLED.print(String(paramArray[nSel-1].min)+'-'+String(paramArray[nSel-1].max));
   }
   menuShow();
 }
@@ -507,11 +542,11 @@ void menuMain (hydroponic& pot, DateTime& now){
               RTC.setTime(now.second, now.minute, now.hour, 1, 12, 2021);
           break;}
           case 5: {                                     // пункт настройки всех пинов
-            paramptr paramArrayptr[] = {  {" pin wtr",     pot.w_pin,      justzero,       digpinmax},
-                                          {" pin lght",    pot.l_pin,      justzero,       digpinmax},
-                                          {" pin br sens", grower1.br_sens_pin,analogpinmin,analogpinmax},
-                                          {" pin led ind", grower1.ind_led_pin,justzero,   digpinmax},
-                                          {" pin OLED en",grower1.OLED_en_pin,justzero,    digpinmax}
+            paramptr paramArrayptr[] = {  {" pin wtr",     pot.w_pin,      justzero,       dpinmax},
+                                          {" pin lght",    pot.l_pin,      justzero,       dpinmax},
+                                          {" pin br sens", grower1.br_sens_pin,apinmin,    apinmax},
+                                          {" pin led ind", grower1.ind_led_pin,justzero,   dpinmax},
+                                          {" pin OLED en",grower1.OLED_en_pin,justzero,    dpinmax}
                                         };
             menuValChange(newHeader,paramArrayptr,sizeof(paramArrayptr)/sizeof(paramArrayptr[0]));
           break;}
@@ -556,6 +591,8 @@ void setup() {                                            // настройка 
   Serial.begin(SerialSpeed);                              // инициализация Serial на скорости SerialSpeed, заданной в начале
   Serial.println(separator);
   Serial.println(F("Starting..."));
+  Serial.println(F(ABOUTTEXT));
+  Serial.println(separator);
 
   pinMode(grower1.OLED_en_pin, INPUT_PULLUP);             // PIN определения подключения дисплея, вкл, когда замкнут на землю
   grower1.useOLED=!digitalRead(grower1.OLED_en_pin);      // попытка инициализации дисплея. Если дисплей не подключен, grower1.useOLED=false и функционал меню настроек не будет использоваться
